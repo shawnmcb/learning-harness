@@ -1,0 +1,71 @@
+# Learning Harness
+
+A flat-file system for making personal (or team) learning **verifiable, durable,
+and self-prioritizing** — the way a good engineering codebase treats its claims.
+Conclusions are logged with evidence provenance and falsification conditions;
+understanding is tested adversarially (planted misconceptions, blind grading);
+freshness is tracked by event-driven triggers, not calendars; and a mechanical
+triage rubric turns the log's own bookkeeping into a ranked "learn this next"
+queue.
+
+Everything is plain Markdown plus one small Python script. No services, no
+database, no lock-in. An AI assistant makes the adversarial roles cheap to run,
+but any diligent human can play them.
+
+## Core ideas (60 seconds)
+
+- **Claims are logged like engineering decisions**: claim, evidence (with
+  read-vs-recalled provenance on every line), confidence %, and what would change
+  your mind. Append-only; changed minds supersede, never silently edit.
+- **Understanding is tested by planted misconceptions**: a grader who has seen
+  ONLY your claim text constructs a plausible-but-wrong neighboring view; you
+  rebut before the reveal. Catching it *for the right reason* is the pass.
+  This is mutation testing for knowledge: a test that can't fail is not evidence.
+- **Correct-answer knowledge ≠ durable knowledge**: the system distinguishes
+  "I recalled the answer" from "wrong neighbors of the answer are structurally
+  implausible to me," and logs which one each verification demonstrated.
+- **Staleness is event-driven**: entries decay when contradicted, superseded,
+  cited-while-unverified, or when recall fails — never because a calendar date
+  passed. (Time-based *practice* schedules are fine; time-based *truth
+  maintenance* is banned.)
+- **The queue is generated, not chosen**: a string-level rubric scores every entry
+  on staleness × trust × gap-exposure; the top of the ranked list is your next
+  session's opener. Creating new knowledge can automatically raise the risk score
+  of old knowledge that now load-bears it.
+
+## Files
+
+| File | What it is |
+|---|---|
+| `COLD-START.md` | Day-one protocol — 8 steps, start here |
+| `PRIMITIVES.md` | Every primitive, defined as a yes/no instantiation test |
+| `PROTOCOLS.md` | Entry types, staleness invariant, verification protocols |
+| `TRIAGE-RUBRIC.md` | The scoring rubric (V2) with a fully worked example |
+| `KILL-CONDITIONS.md` | Pre-registered conditions under which this system is wrong |
+| `check_staleness.py` | Mechanical scanner: staleness findings + protocol lint |
+| `templates/` | Skeleton `LEARNING_SPEC.md` and `LEARNING_DECISIONS.md` |
+
+## Quickstart
+
+```sh
+cp templates/LEARNING_SPEC.md templates/LEARNING_DECISIONS.md <your-workspace>/
+# fill in the spec for your domain, log your first entry, then:
+python3 check_staleness.py <your-workspace>/LEARNING_DECISIONS.md
+```
+
+Then follow `COLD-START.md` step by step.
+
+## Honest status
+
+Built and exercised by a single operator (n=1) across five development modules.
+What has been empirically demonstrated: the triage rubric survived a
+mechanical-reproducibility test (a context-blind scorer, given only the rubric and
+one entry, reproduced the author's scores exactly); the verification protocol
+survived a source-grounded gauntlet (claims planted against a paper the learner
+had never read: 3/3 caught, every grader quote independently verified against the
+text); and the triage queue correctly re-prioritized entries as new entries
+changed what load-bears on what. What has NOT been demonstrated: transfer — no
+second practitioner has yet run a full cycle. `KILL-CONDITIONS.md` pre-registers
+exactly what observations would prove the system untransmissible or its central
+metric worthless. If you adopt this and hit one of those conditions, believe the
+condition, not the system.
