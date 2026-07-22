@@ -7,8 +7,8 @@ Usage: python3 check_staleness.py [path/to/LEARNING_DECISIONS.md]
 Parses LD-*/SY-*/CDS-* entries and evaluates the event-driven triggers that are
 mechanically decidable:
   T2  recollection-tagged evidence on an entry that other entries reference
-  T3  last_verified points at a verification event marked non-probative,
-      or is 'never', or is missing entirely
+  T3  last_verified is 'never'/missing, cites an event ID that exists nowhere
+      else in the log (typo/fabricated), or cites only non-probative events
   missing-fields  entry lacking last_verified or decay_trigger
 Plus a VT protocol lint: events marked `protocol: hardened-v1.1` must carry all
 required elements; unmarked events are reported as legacy.
