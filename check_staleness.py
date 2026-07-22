@@ -27,6 +27,9 @@ if not LOG.exists():
     print(f"check_staleness: no log found at {LOG}")
     sys.exit(0)
 text = LOG.read_text(encoding="utf-8")
+# HTML comments are documentation, not log content — template skeletons and
+# user notes must never register as entries, events, or citations
+text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
 
 # entries: "## LD-001 — title (date)", "## SY-001 — ...", "## CDS-001 — ..."
 entries = {}

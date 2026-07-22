@@ -1,18 +1,40 @@
 ---
 name: learning-harness
-description: Run the learning-harness cycle — triage-ranked study queue, planted-misconception verification with blind grading, event-driven staleness checking, and durability logging over flat-file LEARNING_SPEC.md / LEARNING_DECISIONS.md. Modes mirror the docs — triage, verify, benchmark, check-staleness, cold-start.
+description: "Operate the learning harness over flat-file learning logs: triage-ranked study queue, blind planted-misconception verification, recorded skill benchmarks, event-driven staleness checks. Fires on: what should I learn next, verify a logged claim, is my knowledge stale, start a learning domain."
 argument-hint: "[cold-start | triage | verify <entry-id> | benchmark <sub-area> | check-staleness | status]"
 test-contract:
   triggers:
     - "run my learning triage"
     - "which learning entry should I work on next"
+    - "what should I study next"
     - "verify LD-001 with a planted misconception"
+    - "quiz me adversarially on what I logged"
     - "check my decisions log for stale entries"
+    - "is my knowledge log still fresh"
     - "cold-start the learning harness for a new domain"
   anti-triggers:
     - "research this topic and write a report"
     - "explain this concept to me"
     - "review this code"
+    - "add this to my notes"
+  expected-output:
+    type: markdown
+    min-length: 400
+    must-contain:
+      - "LD-"
+    must-not-contain:
+      - "I cannot access"
+      - "I don't have that information"
+  edge-cases:
+    - input: "no arguments"
+      expected: "ask which mode; if no log exists, offer cold-start"
+    - input: "verify LD-999 (nonexistent entry)"
+      expected: "report entry not found; list existing entry IDs"
+    - input: "verify an entry created this same session"
+      expected: "refuse — grader-independence rules require a later session"
+    - input: "triage with no LEARNING_DECISIONS.md in scope"
+      expected: "report no log found at the path; do not invent entries"
+  category: analysis
 ---
 
 # Learning Harness — Claude Code entrypoint
