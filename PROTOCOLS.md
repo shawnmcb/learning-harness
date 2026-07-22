@@ -21,7 +21,9 @@ An LD/SY/CDS entry is **stale** when any trigger fires:
   supersedes it (including entries it builds on). *Semantic — judged, and the
   judgment sentence is logged.*
 - **T2 unread-source-while-load-bearing** — evidence is recollection-tagged AND
-  the entry is cited by other entries or outward work. *Mechanical.*
+  the entry is cited by another LD/SY/CDS entry, or claims outward use via an
+  explicit `cited-outward: <where>` note in its body. Being a VT's target is
+  verification, not citation, and does not arm T2. *Mechanical.*
 - **T3 verification-invalidated** — never verified, or its last verification was
   run under rules since found non-probative. *Mechanical.*
 - **T4 recall-failure** — a live session cites the entry and the learner cannot

@@ -7,8 +7,9 @@ Usage: python3 check_staleness.py [path/to/LEARNING_DECISIONS.md]
 Parses LD-*/SY-*/CDS-* entries and evaluates the event-driven triggers that are
 mechanically decidable:
   T2  recollection-tagged evidence on an entry that other entries reference
-  T3  last_verified is 'never'/missing, cites an event ID that exists nowhere
-      else in the log (typo/fabricated), or cites only non-probative events
+  T3  last_verified is 'never'/missing, cites an ID with no parsed VT/VB event
+      block (mention-only, typo, or fabricated), or cites only non-probative
+      events; event blocks are bullets, blockquoted bullets, or ##/### headings
   missing-fields  entry lacking last_verified or decay_trigger
 Plus a VT protocol lint: events marked `protocol: hardened-v1.1` must carry all
 required elements; unmarked events are reported as legacy.
@@ -31,25 +32,39 @@ text = LOG.read_text(encoding="utf-8")
 # user notes must never register as entries, events, or citations
 text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
 
-# entries: "## LD-001 — title (date)", "## SY-001 — ...", "## CDS-001 — ..."
+# entries: "## LD-001 — title (date)", "## SY-001 — ...", "## CDS-001 — ...";
+# a body ends at the NEXT heading of any depth 2–3, so heading-style event
+# blocks are never swallowed into the preceding entry
 entries = {}
 for m in re.finditer(r"^## ((?:LD|SY|CDS)-\d+) — (.+)$", text, re.M):
     start = m.start()
-    nxt = re.search(r"^## ", text[m.end():], re.M)
+    nxt = re.search(r"^#{2,3} ", text[m.end():], re.M)
     end = m.end() + (nxt.start() if nxt else len(text) - m.end())
     entries[m.group(1)] = {"title": m.group(2).strip(), "body": text[start:end]}
 
-nonprobative = set(re.findall(r"(VT-\d+|VB-\d+)[^.\n]*?non-probative", text))
+# ---- VT/VB event blocks, parsed FIRST: bullets, blockquoted bullets, headings.
+# Everything downstream (existence, non-probative status, protocol lint) derives
+# from these parsed blocks — a bare mention of an ID is never an event.
+event_bodies = {}
+for pat in (
+    r"^(?:>\s*)?[-*] \*\*((?:VT|VB)-\d+)([^\n]*\*\*.*?)(?=^(?:>\s*)?[-*] \*\*|^#{2,3} |\Z)",
+    r"^#{2,3} ((?:VT|VB)-\d+)([^\n]*\n.*?)(?=^#{2,3} |^(?:>\s*)?[-*] \*\*|\Z)",
+):
+    for vid, body in re.findall(pat, text, re.M | re.S):
+        event_bodies[vid] = event_bodies.get(vid, "") + body
+existing_events = set(event_bodies)
+
+# non-probative: marked inside the event's own block, or stated on any single
+# line naming the ID (crosses sentence punctuation; a line-level approximation)
+nonprobative = {v for v, b in event_bodies.items() if "non-probative" in b.lower()}
+for line in text.splitlines():
+    if "non-probative" in line.lower():
+        nonprobative.update(re.findall(r"\b((?:VT|VB)-\d+)\b", line))
 
 # provenance regexes — single source of truth, matching TRIAGE-RUBRIC.md's
 # READ/UNREAD definitions exactly
 UNREAD_RE = re.compile(r"corpus recollection|\brecalled\b|derived this cycle", re.I)
 READ_RE = re.compile(r"\[READ\s", re.I)
-
-# an event ID "exists" iff it appears somewhere OUTSIDE a last_verified line —
-# a typo'd or fabricated ID that occurs only where it is cited does not count
-non_lv_text = "\n".join(l for l in text.splitlines() if "last_verified" not in l)
-existing_events = set(re.findall(r"\b((?:VT|VB)-\d+)\b", non_lv_text))
 
 findings, judgment = [], []
 for eid, e in sorted(entries.items()):
@@ -71,10 +86,11 @@ for eid, e in sorted(entries.items()):
                         + ", ".join(sorted(phantom)))
     elif ver_ids <= nonprobative:
         findings.append(f"{eid}: T3 — last verification is marked non-probative")
-    # T2: UNREAD-tagged evidence + referenced by other entries
+    # T2: UNREAD-tagged evidence + cited by another LD/SY/CDS entry or an
+    # explicit outward-work marker. Being a VT's *target* is not a citation.
     if UNREAD_RE.search(b):
         refs = [o for o in entries if o != eid and eid in entries[o]["body"]]
-        cited_elsewhere = bool(refs) or len(re.findall(eid, text)) > len(re.findall(eid, b))
+        cited_elsewhere = bool(refs) or "cited-outward" in b.lower()
         if cited_elsewhere:
             findings.append(f"{eid}: T2 — UNREAD-tagged evidence while cited elsewhere; "
                             f"clears on primary-source re-read")
@@ -91,11 +107,8 @@ VT_REQUIRED = [
     ("steelman-novel boolean", r"steelman-novel"),
     ("discriminator boolean", r"discriminator"),
 ]
-# events may be logged as bullets ("- **VT-001** ...") or headings ("### VT-001 ...")
-vt_blocks = re.findall(r"^- \*\*(VT-\d+)[^\n]*\*\*(.*?)(?=^- \*\*|^#{2,3} |\Z)",
-                       text, re.M | re.S)
-vt_blocks += re.findall(r"^#{2,3} (VT-\d+)([^\n]*\n.*?)(?=^#{2,3} |^- \*\*|\Z)",
-                        text, re.M | re.S)
+# lint runs over the same parsed event blocks (VT only)
+vt_blocks = [(v, b) for v, b in event_bodies.items() if v.startswith("VT-")]
 vt_findings, legacy = [], []
 for vid, body in vt_blocks:
     if "protocol: hardened" in body.lower():
