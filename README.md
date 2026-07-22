@@ -37,6 +37,7 @@ but any diligent human can play them.
 
 | File | What it is |
 |---|---|
+| `SKILL.md` | Optional Claude Code entrypoint (modes, HITL tiers, quality gates) |
 | `COLD-START.md` | Day-one protocol — 8 steps, start here |
 | `PRIMITIVES.md` | Every primitive, defined as a yes/no instantiation test |
 | `PROTOCOLS.md` | Entry types, staleness invariant, verification protocols |
@@ -54,6 +55,12 @@ python3 check_staleness.py <your-workspace>/LEARNING_DECISIONS.md
 ```
 
 Then follow `COLD-START.md` step by step.
+
+**Claude Code users**: clone this directory into your skills folder (e.g.
+`.claude/skills/learning-harness/`) and `SKILL.md` gives the assistant a routed
+entrypoint (`triage`, `verify <id>`, `benchmark`, `check-staleness`, `cold-start`)
+with human-in-the-loop tiers and quality gates. The skill is an adapter over the
+same docs — the harness works identically without it.
 
 ## Honest status
 

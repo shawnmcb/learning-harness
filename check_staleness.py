@@ -38,6 +38,16 @@ for m in re.finditer(r"^## ((?:LD|SY|CDS)-\d+) — (.+)$", text, re.M):
 
 nonprobative = set(re.findall(r"(VT-\d+|VB-\d+)[^.\n]*?non-probative", text))
 
+# provenance regexes — single source of truth, matching TRIAGE-RUBRIC.md's
+# READ/UNREAD definitions exactly
+UNREAD_RE = re.compile(r"corpus recollection|\brecalled\b|derived this cycle", re.I)
+READ_RE = re.compile(r"\[READ\s", re.I)
+
+# an event ID "exists" iff it appears somewhere OUTSIDE a last_verified line —
+# a typo'd or fabricated ID that occurs only where it is cited does not count
+non_lv_text = "\n".join(l for l in text.splitlines() if "last_verified" not in l)
+existing_events = set(re.findall(r"\b((?:VT|VB)-\d+)\b", non_lv_text))
+
 findings, judgment = [], []
 for eid, e in sorted(entries.items()):
     b = e["body"]
@@ -47,18 +57,23 @@ for eid, e in sorted(entries.items()):
         findings.append(f"{eid}: MISSING-FIELDS — needs last_verified and/or decay_trigger")
         continue
     lv_val = lv.group(1).strip()
-    # T3: never verified, or verified only by a non-probative event
+    # T3: never verified, verified only by a non-probative event, or the cited
+    # event ID does not exist anywhere in the log (typo / fabricated reference)
     ver_ids = set(re.findall(r"(VT-\d+|VB-\d+)", lv_val))
+    phantom = ver_ids - existing_events
     if lv_val.lower().startswith("never") or not ver_ids:
         findings.append(f"{eid}: T3 — no valid verification event on record")
-    elif ver_ids and ver_ids <= nonprobative:
+    elif phantom:
+        findings.append(f"{eid}: T3 — last_verified cites nonexistent event(s): "
+                        + ", ".join(sorted(phantom)))
+    elif ver_ids <= nonprobative:
         findings.append(f"{eid}: T3 — last verification is marked non-probative")
-    # T2: corpus recollection + referenced by other entries
-    if "corpus recollection" in b:
+    # T2: UNREAD-tagged evidence + referenced by other entries
+    if UNREAD_RE.search(b):
         refs = [o for o in entries if o != eid and eid in entries[o]["body"]]
         cited_elsewhere = bool(refs) or len(re.findall(eid, text)) > len(re.findall(eid, b))
         if cited_elsewhere:
-            findings.append(f"{eid}: T2 — corpus-recollection evidence while cited elsewhere; "
+            findings.append(f"{eid}: T2 — UNREAD-tagged evidence while cited elsewhere; "
                             f"clears on primary-source re-read")
     judgment.append(f"{eid}: judge T1 (superseded/contradicted by newer entry or source?) "
                     f"and T5 (spec sub-area rewritten since {lv_val.split('(')[0].strip()}?)")
@@ -73,8 +88,11 @@ VT_REQUIRED = [
     ("steelman-novel boolean", r"steelman-novel"),
     ("discriminator boolean", r"discriminator"),
 ]
-vt_blocks = re.findall(r"^- \*\*(VT-\d+)[^\n]*\*\*(.*?)(?=^- \*\*|^## |\Z)",
+# events may be logged as bullets ("- **VT-001** ...") or headings ("### VT-001 ...")
+vt_blocks = re.findall(r"^- \*\*(VT-\d+)[^\n]*\*\*(.*?)(?=^- \*\*|^#{2,3} |\Z)",
                        text, re.M | re.S)
+vt_blocks += re.findall(r"^#{2,3} (VT-\d+)([^\n]*\n.*?)(?=^#{2,3} |^- \*\*|\Z)",
+                        text, re.M | re.S)
 vt_findings, legacy = [], []
 for vid, body in vt_blocks:
     if "protocol: hardened" in body.lower():

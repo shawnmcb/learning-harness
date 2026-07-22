@@ -37,10 +37,21 @@ PROTOCOLS.md in the harness package. Triage: TRIAGE-RUBRIC.md.
 
 ## Verification events
 
-<!-- VT entries (immutable). Under protocol: hardened-v1.1 each records:
-     the numbered answer key (logged before rebuttal), the F-numbered rebuttal,
-     grade with the three booleans (caught-exact, steelman-novel,
-     rebuttal-cites-discriminator), and grader mapping(s). -->
+<!-- VT entries are immutable. Use ONE of these two shapes — the checker's
+     protocol lint scans both; anything else silently bypasses it: -->
+
+<!-- Bullet form:
+- **VT-001** (<date>, against LD-001; protocol: hardened-v1.1):
+  Answer key (logged before rebuttal): 1. asserts P; actually ¬P because Q ...
+  Rebuttal: F1 <flaw named> ... F2 ...
+  Mapping: F1→key-1. Grade: caught-exact: true|false; steelman-novel: true|false;
+  rebuttal-cites-discriminator: true|false. Result + what it confirmed/exposed.
+-->
+
+<!-- Heading form (equivalent):
+### VT-001 (<date>, against LD-001; protocol: hardened-v1.1)
+<same required elements as above>
+-->
 
 <!-- VB entries (skill domains): pre-declared exercise + 2–4 recording-
      adjudicable criteria; per-criterion pass/fail from the recording. -->
